@@ -5,6 +5,8 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -33,9 +35,9 @@ public class AmazonSearchTest {
         }
     }
 
-    private void searchAndAddToCart(String searchTerm) {
+    private void searchAndAddToCart(String searchTerm) throws InterruptedException {
         // Navigate to Amazon
-        driver.get("https://www.amazon.in");
+        driver.get("https://www.amazon.com");
 
         // Accept cookies if shown
         try {
@@ -51,37 +53,47 @@ public class AmazonSearchTest {
         searchBox.submit();
 
         // Click first product link
-    //    WebElement firstProduct = driver.findElement(By.cssSelector("div[data-component-type='s-search-result'] h2 a"));
-        List<WebElement> firstProducts = driver.findElements(By.xpath("//img[@class='s-image']"));
-        System.out.println("Total product images found: " + firstProducts.size());
-        if (!firstProducts.isEmpty()) {
-            WebElement firstProductImage = firstProducts.get(0);
+        List<WebElement> productsList = driver.findElements(By.xpath("//img[@class='s-image']"));
+        System.out.println("Total product images found: " + productsList.size());
+        if (!productsList.isEmpty()) {
+            WebElement firstProductImage = productsList.get(1);
             firstProductImage.click();
         }
 
+        // Adding to Cart
+        Thread.sleep(10000);
+        WebElement addToCartBtn = driver.findElement(By.xpath("//input[@id='add-to-cart-button']"));
+        addToCartBtn.click();
+        System.out.println("Added to cart !");
 
-        // Wait for the price element to be visible
-        String priceText = "";
-        try {
-            priceText = driver.findElement(By.id("priceblock_ourprice")).getText();
-        } catch (Exception e1) {
-            try {
-                priceText = driver.findElement(By.id("priceblock_dealprice")).getText();
-            } catch (Exception e2) {
-                priceText = "Price not found";
-            }
+        // Price Display
+        List<WebElement> priceList = driver.findElements(By.xpath("//img[@class='s-image']"));
+        System.out.println("Total product images found: " + priceList.size());
+        if (!priceList.isEmpty()) {
+            WebElement priceItem = priceList.get(4);
+            String finalPrice = priceItem.getText();
+            System.out.println("The price is - "+finalPrice);
         }
 
-        System.out.println("Price of " + searchTerm + ": " + priceText);
     }
 
     @Test
-    public void testSearchAddIPhone() {
-        searchAndAddToCart("iPhone");
+    public void testSearchAddIPhone() throws InterruptedException {
+        try{
+            searchAndAddToCart("iPhone");
+        }
+        catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
     @Test
-    public void testSearchAddGalaxy() {
-        searchAndAddToCart("Galaxy");
+    public void testSearchAddGalaxy() throws InterruptedException {
+        try{
+            searchAndAddToCart("Galaxy");
+        }
+        catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
