@@ -1,31 +1,39 @@
 package amazon;
 
+import amazon.pages.AmazonPageLocators;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.net.URL;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class AmazonSearchTest {
 
+    String username = "raghavkhullar16";
+    String accessKey = "LT_0wIu2qOQIdc6BiX9Ifa81f7bIcZPHDqFVkWmw1KNGkymaXF";
     private WebDriver driver;
 
     @BeforeClass
-    public void setup() {
-        // Set up ChromeDriver
-        System.setProperty("webdriver.chrome.driver", "chromedriver.exe"); // Update the path to your ChromeDriver
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--start-maximized");
-        driver = new ChromeDriver(options);
-        driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+    public void setup() throws Exception {
+        DesiredCapabilities caps = new DesiredCapabilities();
+        caps.setCapability("browserName", "Chrome");
+        caps.setCapability("version", "latest");
+        caps.setCapability("platform", "macOS Sequoia");
+        caps.setCapability("name", "AmazonTest");
+        caps.setCapability("build", "AmazonBuild");
+
+        driver = new RemoteWebDriver(
+                new URL("https://" + username + ":" + accessKey + "@hub.lambdatest.com/wd/hub"),
+                caps
+        );
     }
 
     @AfterClass
@@ -36,64 +44,71 @@ public class AmazonSearchTest {
     }
 
     private void searchAndAddToCart(String searchTerm) throws InterruptedException {
-        // Navigate to Amazon
         driver.get("https://www.amazon.com");
 
         // Accept cookies if shown
         try {
-            WebElement acceptButton = driver.findElement(By.id("sp-cc-accept"));
+            WebElement acceptButton = driver.findElement(AmazonPageLocators.ACCEPT_COOKIES_BUTTON);
             acceptButton.click();
         } catch (Exception ignored) {
         }
 
         // Search for the device
-        WebElement searchBox = driver.findElement(By.id("twotabsearchtextbox"));
+        WebDriverWait wait = new WebDriverWait(driver, 20);
+        WebElement searchBox = wait.until(ExpectedConditions.visibilityOfElementLocated(AmazonPageLocators.SEARCH_BOX));
         searchBox.clear();
         searchBox.sendKeys(searchTerm);
         searchBox.submit();
 
         // Click first product link
-        List<WebElement> productsList = driver.findElements(By.xpath("//img[@class='s-image']"));
+        List<WebElement> productsList = driver.findElements(AmazonPageLocators.PRODUCT_IMAGES);
         System.out.println("Total product images found: " + productsList.size());
         if (!productsList.isEmpty()) {
-            WebElement firstProductImage = productsList.get(1);
+            WebElement firstProductImage = productsList.get(0);
             firstProductImage.click();
         }
 
         // Adding to Cart
-        Thread.sleep(10000);
-        WebElement addToCartBtn = driver.findElement(By.xpath("//input[@id='add-to-cart-button']"));
-        addToCartBtn.click();
-        System.out.println("Added to cart !");
-
-        // Price Display
-        List<WebElement> priceList = driver.findElements(By.xpath("//img[@class='s-image']"));
-        System.out.println("Total product images found: " + priceList.size());
-        if (!priceList.isEmpty()) {
-            WebElement priceItem = priceList.get(4);
-            String finalPrice = priceItem.getText();
-            System.out.println("The price is - "+finalPrice);
+        try {
+            WebElement addToCartBtn = wait.until(
+                    ExpectedConditions.elementToBeClickable(AmazonPageLocators.ADD_TO_CART_BUTTON)
+            );
+            addToCartBtn.click();
+            System.out.println("Added to cart!");
+        } catch (Exception e) {
+            System.out.println("Add to Cart button not found or not clickable.");
         }
 
+        // Extract price
+        WebElement priceElement = null;
+
+        try {
+            priceElement = wait.until(ExpectedConditions.presenceOfElementLocated(AmazonPageLocators.PRICE_WHOLE));
+        } catch (Exception ignored) {
+        }
+
+        if (priceElement == null) {
+            try {
+                priceElement = wait.until(ExpectedConditions.presenceOfElementLocated(AmazonPageLocators.PRICE_BLOCK));
+            } catch (Exception ignored) {
+            }
+        }
+
+        if (priceElement != null) {
+            System.out.println("Product Price: " + priceElement.getText());
+        } else {
+            System.out.println("Product price not found.");
+        }
     }
+
 
     @Test
     public void testSearchAddIPhone() throws InterruptedException {
-        try{
-            searchAndAddToCart("iPhone");
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    @Test
-    public void testSearchAddGalaxy() throws InterruptedException {
-        try{
-            searchAndAddToCart("Galaxy");
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        searchAndAddToCart("iPhone");
     }
 
+    @Test
+    public void testSearchAddGalaxy() throws InterruptedException {
+        searchAndAddToCart("Galaxy");
+    }
 }
